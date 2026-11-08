@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurateur d'Intérieur</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <style>
+        body { background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .tab-active { border-bottom: 2px solid #0f172a; color: #0f172a; font-weight: 600; }
+        .tab-inactive { color: #64748b; }
+        .tab-inactive:hover { color: #334155; }
+    </style>
+</head>
+<body>
+    <div id="app" class="max-w-7xl mx-auto px-4 py-8">
+        <header class="mb-8 flex flex-col md:flex-row justify-between md:items-end border-b pb-4 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Configurateur d'Intérieur</h1>
+                <p class="text-slate-500 text-sm mt-1">Gestion locale des catégories et configurations</p>
+            </div>
+            <div class="flex items-center gap-6">
+                <nav class="flex space-x-6 text-sm">
+                    <button @click="activeTab = 'catalog'" :class="activeTab === 'catalog' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Catalogue & Catégories</button>
+                    <button @click="activeTab = 'config'" :class="activeTab === 'config' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Créer une Config</button>
+                    <button @click="activeTab = 'saved'" :class="activeTab === 'saved' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Sauvegardes</button>
+                </nav>
+                <div class="flex gap-2 items-center border-l pl-6 border-slate-200">
+                    <button @click="exportData" class="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded shadow-sm hover:bg-slate-200 border border-slate-200 transition-colors font-medium">Exporter JSON</button>
+                    <label class="text-xs bg-slate-900 text-white px-3 py-1.5 rounded shadow-sm hover:bg-slate-800 transition-colors cursor-pointer m-0 font-medium">
+                        Importer JSON
+                        <input type="file" accept=".json" @change="importData" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- TAB: CATALOG -->
+        <div v-show="activeTab === 'catalog'" class="space-y-8">
+            <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4">Ajouter un meuble</h2>
+                <form @submit.prevent="addFurniture" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nom du meuble</label>
+                        <input v-model="newFurniture.name" type="text" required class="w-full text-sm border-slate-200 rounded-md shadow-sm focus:border-slate-800 focus:ring-slate-800 p-2 border">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Catégorie</label>
+                        <div class="flex gap-2">
+                            <select v-model="newFurniture.category" required class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border bg-white">
+                                <option disabled value="">Choisir...</option>
+                                <option v-for="cat in categories" :key="cat" :value="cat">{{ cat }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Photo (redimensionnée auto)</label>
+                        <input type="file" id="fileInput" accept="image/*" @change="handleImage" required class="w-full text-sm file:mr-4 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200">
+                    </div>
+                    <button type="submit" class="bg-slate-900 text-white px-4 py-2.5 rounded-md text-sm font-medium hover:bg-slate-800 transition-colors w-full">Ajouter au catalogue</button>
+                </form>
+                
+                <div class="mt-4 pt-4 border-t border-slate-100">
+                    <form @submit.prevent="addCategory" class="flex gap-2 max-w-sm">
+                        <input v-model="newCategory" type="text" placeholder="Nouvelle catégorie (ex: Luminaires)" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
+                        <button type="submit" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-md text-sm hover:bg-slate-200 border border-slate-200 font-medium">Ajouter</button>
+                    </form>
+                </div>
+            </section>
+
+            <section v-for="(items, category) in groupedFurnitures" :key="category" v-show="items.length > 0" class="space-y-4">
+                <h3 class="text-xl font-semibold text-slate-800 border-b pb-2">{{ category }}</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <div v-for="item in items" :key="item.id" class="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow relative group">
+                        <img :src="item.image" :alt="item.name" class="w-full h-40 object-cover bg-slate-50">
+                        <div class="p-3">
+                            <h4 class="text-sm font-medium text-slate-900 truncate">{{ item.name }}</h4>
+                        </div>
+                        <button @click="deleteFurniture(item.id)" class="absolute top-2 right-2 bg-white/90 text-red-600 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-sm hover:bg-red-50 text-xs">Supprimer</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB: CONFIG -->
+        <div v-show="activeTab === 'config'" class="space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex gap-6 items-end">
+                <div class="flex-1">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Nom de la configuration</label>
+                    <input v-model="newConfigName" type="text" placeholder="Ex: Salon Minimaliste" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
+                </div>
+                <div class="w-64">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Profil de préférence</label>
+                    <select v-model="newConfigProfile" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border bg-white">
+                        <option>Moderne</option>
+                        <option>Industriel</option>
+                        <option>Scandinave</option>
+                        <option>Classique</option>
+                        <option>Épuré</option>
+                    </select>
+                </div>
+                <button @click="saveConfig" :disabled="!newConfigName || Object.keys(currentSelection).length === 0" class="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-slate-800 transition-colors">Sauvegarder l'ensemble</button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Selectors -->
+                <div class="space-y-6">
+                    <div v-for="(items, category) in groupedFurnitures" :key="category" v-show="items.length > 0">
+                        <h3 class="text-sm font-semibold text-slate-800 mb-3">{{ category }}</h3>
+                        <div class="flex gap-3 overflow-x-auto pb-2">
+                            <div v-for="item in items" :key="item.id" 
+                                @click="selectForConfig(category, item)"
+                                :class="currentSelection[category]?.id === item.id ? 'ring-2 ring-slate-900 border-transparent' : 'border-slate-200 hover:border-slate-400'"
+                                class="flex-shrink-0 w-24 rounded-lg border cursor-pointer overflow-hidden transition-all bg-white">
+                                <img :src="item.image" class="w-full h-20 object-cover">
+                                <p class="text-[10px] text-center p-1 truncate font-medium text-slate-700">{{ item.name }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 h-fit sticky top-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Aperçu de la sélection</h3>
+                    <div v-if="Object.keys(currentSelection).length === 0" class="text-sm text-slate-500 text-center py-10">
+                        Aucun meuble sélectionné. Cliquez sur les éléments à gauche.
+                    </div>
+                    <div class="space-y-4">
+                        <div v-for="(item, cat) in currentSelection" :key="cat" class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                            <img :src="item.image" class="w-16 h-16 rounded object-cover border border-slate-100">
+                            <div>
+                                <p class="text-xs text-slate-500 font-medium">{{ cat }}</p>
+                                <p class="text-sm text-slate-900 font-semibold">{{ item.name }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB: SAVED CONFIGS -->
+        <div v-show="activeTab === 'saved'" class="space-y-8">
+            <div v-if="configs.length === 0" class="text-center py-12 text-slate-500 bg-white rounded-xl border border-slate-100">
+                Aucune configuration sauvegardée.
+            </div>
+            
+            <div v-for="(profileGroup, profileName) in groupedConfigs" :key="profileName" class="space-y-4">
+                <h3 class="text-xl font-semibold text-slate-800 border-b pb-2 flex items-center gap-2">
+                    <span class="bg-slate-100 text-slate-600 px-2 py-1 rounded text-sm">{{ profileName }}</span>
+                </h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div v-for="config in profileGroup" :key="config.id" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative group">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <h4 class="font-semibold text-slate-900">{{ config.name }}</h4>
+                            <button @click="deleteConfig(config.id)" class="text-slate-400 hover:text-red-600 text-sm">Supprimer</button>
+                        </div>
+                        <div class="p-4 grid grid-cols-3 gap-2">
+                            <div v-for="(item, cat) in config.items" :key="cat" class="text-center">
+                                <img :src="item.image" :title="item.name" class="w-full h-16 object-cover rounded border border-slate-100 mb-1">
+                                <p class="text-[10px] text-slate-500 truncate">{{ cat }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+
+        createApp({
+            data() {
+                return {
+                    categories: JSON.parse(localStorage.getItem('mb_categories')) || ['Assises', 'Tables', 'Rangements'],
+                    newCategory: '',
+                    furnitures: JSON.parse(localStorage.getItem('mb_furnitures')) || [],
+                    newFurniture: { name: '', category: '', image: null },
+                    configs: JSON.parse(localStorage.getItem('mb_configs')) || [],
+                    newConfigName: '',
+                    newConfigProfile: 'Moderne',
+                    currentSelection: {}, 
+                    activeTab: 'catalog'
+                }
+            },
+            watch: {
+                categories: { handler(val) { localStorage.setItem('mb_categories', JSON.stringify(val)) }, deep: true },
+                furnitures: { handler(val) { localStorage.setItem('mb_furnitures', JSON.stringify(val)) }, deep: true },
+                configs: { handler(val) { localStorage.setItem('mb_configs', JSON.stringify(val)) }, deep: true }
+            },
+            methods: {
+                addCategory() {
+                    const cat = this.newCategory.trim();
+                    if (cat && !this.categories.includes(cat)) {
+                        this.categories.push(cat);
+                        this.newCategory = '';
+                    }
+                },
+                handleImage(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const canvas = document.createElement('canvas');
+                            const MAX_WIDTH = 600;
+                            let width = img.width;
+                            let height = img.height;
+                            
+                            if (width > MAX_WIDTH) {
+                                height = Math.round((height * MAX_WIDTH) / width);
+                                width = MAX_WIDTH;
+                            }
+                            
+                            canvas.width = width;
+                            canvas.height = height;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, width, height);
+                            this.newFurniture.image = canvas.toDataURL('image/jpeg', 0.6);
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                },
+                addFurniture() {
+                    if (this.newFurniture.name && this.newFurniture.category && this.newFurniture.image) {
+                        this.furnitures.push({
+                            id: Date.now(),
+                            name: this.newFurniture.name,
+                            category: this.newFurniture.category,
+                            image: this.newFurniture.image
+                        });
+                        this.newFurniture = { name: '', category: '', image: null };
+                        document.getElementById('fileInput').value = '';
+                    }
+                },
+                deleteFurniture(id) {
+                    this.furnitures = this.furnitures.filter(f => f.id !== id);
+                    for (const cat in this.currentSelection) {
+                        if (this.currentSelection[cat].id === id) {
+                            delete this.currentSelection[cat];
+                        }
+                    }
+                },
+                selectForConfig(category, furniture) {
+                    this.currentSelection[category] = furniture;
+                },
+                saveConfig() {
+                    if (this.newConfigName && Object.keys(this.currentSelection).length > 0) {
+                        this.configs.push({
+                            id: Date.now(),
+                            name: this.newConfigName,
+                            profile: this.newConfigProfile,
+                            items: JSON.parse(JSON.stringify(this.currentSelection))
+                        });
+                        this.newConfigName = '';
+                        this.currentSelection = {};
+                        this.activeTab = 'saved';
+                    }
+                },
+                deleteConfig(id) {
+                    this.configs = this.configs.filter(c => c.id !== id);
+                },
+                exportData() {
+                    const data = {
+                        categories: this.categories,
+                        furnitures: this.furnitures,
+                        configs: this.configs
+                    };
+                    const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'meubles_config_backup.json';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                },
+                importData(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.categories && data.furnitures && data.configs) {
+                                this.categories = data.categories;
+                                this.furnitures = data.furnitures;
+                                this.configs = data.configs;
+                                alert("Données importées avec succès !");
+                            } else {
+                                alert("Fichier JSON invalide. Il manque des données essentielles.");
+                            }
+                        } catch (err) {
+                            alert("Erreur lors de la lecture du fichier JSON.");
+                        }
+                    };
+                    reader.readAsText(file);
+                    event.target.value = ''; 
+                }
+            },
+            computed: {
+                groupedFurnitures() {
+                    const grouped = {};
+                    this.categories.forEach(c => grouped[c] = []);
+                    this.furnitures.forEach(f => {
+                        if (grouped[f.category]) grouped[f.category].push(f);
+                        else grouped[f.category] = [f];
+                    });
+                    return grouped;
+                },
+                groupedConfigs() {
+                    const grouped = {};
+                    this.configs.forEach(c => {
+                        if (!grouped[c.profile]) grouped[c.profile] = [];
+                        grouped[c.profile].push(c);
+                    });
+                    return grouped;
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
