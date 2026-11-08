@@ -22,7 +22,8 @@
             </div>
             <div class="flex items-center gap-6">
                 <nav class="flex space-x-6 text-sm">
-                    <button @click="activeTab = 'catalog'" :class="activeTab === 'catalog' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Catalogue & Catégories</button>
+                    <button @click="activeTab = 'catalog'" :class="activeTab === 'catalog' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Catalogue</button>
+                    <button @click="activeTab = 'manage_categories'" :class="activeTab === 'manage_categories' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Catégories & Pièces</button>
                     <button @click="activeTab = 'config'" :class="activeTab === 'config' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Créer une Config</button>
                     <button @click="activeTab = 'saved'" :class="activeTab === 'saved' ? 'tab-active' : 'tab-inactive'" class="pb-2 transition-colors">Sauvegardes</button>
                 </nav>
@@ -36,7 +37,71 @@
             </div>
         </header>
 
-        <!-- TAB: CATALOG -->
+        <!-- TAB: MANAGE CATEGORIES & ROOMS -->
+        <div v-show="activeTab === 'manage_categories'" class="space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- Gestion des Catégories de base -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4">Gestion des Catégories</h2>
+                    
+                    <form @submit.prevent="addCategory" class="flex gap-2 mb-6">
+                        <input v-model="newCategory" type="text" placeholder="Nouvelle catégorie (ex: Luminaires)" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
+                        <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-800">Ajouter</button>
+                    </form>
+
+                    <div class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                        <div v-for="cat in categories" :key="cat" class="flex justify-between items-center bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            
+                            <div v-if="editingCategory === cat" class="flex gap-2 w-full">
+                                <input v-model="editCategoryName" type="text" class="w-full text-sm border-slate-300 rounded p-1 border">
+                                <button @click="saveCategoryEdit(cat)" class="bg-green-600 text-white px-2 py-1 rounded text-xs">OK</button>
+                                <button @click="editingCategory = null" class="bg-slate-300 text-slate-800 px-2 py-1 rounded text-xs">Annuler</button>
+                            </div>
+                            
+                            <div v-else class="flex justify-between items-center w-full">
+                                <span class="text-sm font-medium text-slate-700">{{ cat }}</span>
+                                <div class="flex gap-2">
+                                    <button @click="startCategoryEdit(cat)" class="text-xs text-blue-600 hover:underline">Renommer</button>
+                                    <button @click="deleteCategory(cat)" class="text-xs text-red-600 hover:underline">Supprimer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Gestion des Types de Pièces (Templates) -->
+                <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                    <h2 class="text-lg font-semibold text-slate-800 mb-4">Templates de Pièces</h2>
+                    <p class="text-xs text-slate-500 mb-4">Définissez quelles catégories sont requises pour chaque type de pièce.</p>
+                    
+                    <form @submit.prevent="addRoomTemplate" class="flex gap-2 mb-6">
+                        <input v-model="newRoomTemplate" type="text" placeholder="Nouveau template (ex: Chambre complète)" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
+                        <button type="submit" class="bg-slate-900 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-slate-800">Créer</button>
+                    </form>
+
+                    <div class="space-y-4 max-h-96 overflow-y-auto pr-2">
+                        <div v-for="room in roomTemplates" :key="room.name" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                            <div class="flex justify-between items-center mb-3">
+                                <h3 class="font-semibold text-slate-800 text-sm">{{ room.name }}</h3>
+                                <button @click="deleteRoomTemplate(room.name)" class="text-xs text-red-600 hover:underline">Supprimer le template</button>
+                            </div>
+                            
+                            <div class="text-xs text-slate-600 mb-2 font-medium">Catégories requises :</div>
+                            <div class="flex flex-wrap gap-2">
+                                <label v-for="cat in categories" :key="cat" class="flex items-center gap-1 bg-white border border-slate-200 px-2 py-1 rounded cursor-pointer hover:bg-slate-50">
+                                    <input type="checkbox" :value="cat" v-model="room.requiredCategories" @change="saveRoomTemplates" class="rounded border-slate-300 text-slate-900 focus:ring-slate-900">
+                                    <span class="text-xs">{{ cat }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+                
+            </div>
+        </div>
+
+        <!-- TAB: CATALOG (Updated without the old category input) -->
         <div v-show="activeTab === 'catalog'" class="space-y-8">
             <section class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
                 <h2 class="text-lg font-semibold text-slate-800 mb-4">Ajouter un meuble</h2>
@@ -60,13 +125,6 @@
                     </div>
                     <button type="submit" class="bg-slate-900 text-white px-4 py-2.5 rounded-md text-sm font-medium hover:bg-slate-800 transition-colors w-full">Ajouter au catalogue</button>
                 </form>
-                
-                <div class="mt-4 pt-4 border-t border-slate-100">
-                    <form @submit.prevent="addCategory" class="flex gap-2 max-w-sm">
-                        <input v-model="newCategory" type="text" placeholder="Nouvelle catégorie (ex: Luminaires)" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
-                        <button type="submit" class="bg-slate-100 text-slate-700 px-3 py-2 rounded-md text-sm hover:bg-slate-200 border border-slate-200 font-medium">Ajouter</button>
-                    </form>
-                </div>
             </section>
 
             <section v-for="(items, category) in groupedFurnitures" :key="category" v-show="items.length > 0" class="space-y-4">
@@ -83,14 +141,25 @@
             </section>
         </div>
 
-        <!-- TAB: CONFIG -->
+        <!-- TAB: CONFIG (Updated with Templates) -->
         <div v-show="activeTab === 'config'" class="space-y-6">
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 flex gap-6 items-end">
-                <div class="flex-1">
+            
+            <!-- Template Selection & Config Info -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100 grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+                <div class="md:col-span-2">
                     <label class="block text-xs font-medium text-slate-500 mb-1">Nom de la configuration</label>
-                    <input v-model="newConfigName" type="text" placeholder="Ex: Salon Minimaliste" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
+                    <input v-model="newConfigName" type="text" placeholder="Ex: Salon de la nouvelle maison" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border">
                 </div>
-                <div class="w-64">
+                
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Template de pièce (Optionnel)</label>
+                    <select v-model="selectedRoomTemplate" @change="applyRoomTemplate" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border bg-white">
+                        <option value="">Configuration Libre</option>
+                        <option v-for="room in roomTemplates" :key="room.name" :value="room.name">{{ room.name }}</option>
+                    </select>
+                </div>
+
+                <div>
                     <label class="block text-xs font-medium text-slate-500 mb-1">Profil de préférence</label>
                     <select v-model="newConfigProfile" class="w-full text-sm border-slate-200 rounded-md shadow-sm p-2 border bg-white">
                         <option>Moderne</option>
@@ -100,41 +169,95 @@
                         <option>Épuré</option>
                     </select>
                 </div>
-                <button @click="saveConfig" :disabled="!newConfigName || Object.keys(currentSelection).length === 0" class="bg-slate-900 disabled:bg-slate-300 text-white px-6 py-2.5 rounded-md text-sm font-medium hover:bg-slate-800 transition-colors">Sauvegarder l'ensemble</button>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Selectors -->
+                <!-- Selectors (Filtered by Template if active) -->
                 <div class="space-y-6">
-                    <div v-for="(items, category) in groupedFurnitures" :key="category" v-show="items.length > 0">
-                        <h3 class="text-sm font-semibold text-slate-800 mb-3">{{ category }}</h3>
+                    <!-- Progress / Status if a template is selected -->
+                    <div v-if="selectedRoomTemplateObj" class="bg-slate-900 text-white p-4 rounded-lg shadow-sm">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold">Objectif : {{ selectedRoomTemplateObj.name }}</span>
+                            <span class="text-xs">{{ templateProgress.count }} / {{ templateProgress.total }}</span>
+                        </div>
+                        <div class="w-full bg-slate-700 rounded-full h-1.5 mb-2">
+                            <div class="bg-green-400 h-1.5 rounded-full transition-all duration-300" :style="{ width: templateProgress.percentage + '%' }"></div>
+                        </div>
+                        <div class="text-xs text-slate-300 flex flex-wrap gap-2 mt-3">
+                            <span v-for="cat in selectedRoomTemplateObj.requiredCategories" :key="cat" 
+                                  :class="currentSelection[cat] ? 'text-green-400' : 'text-slate-400'">
+                                <span v-if="currentSelection[cat]">✓</span>
+                                <span v-else>○</span> {{ cat }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Display Categories -->
+                    <div v-for="(items, category) in filteredCategoriesForConfig" :key="category" v-show="items.length > 0">
+                        <h3 class="text-sm font-semibold mb-3 flex justify-between items-center" 
+                            :class="isRequired(category) && !currentSelection[category] ? 'text-amber-600' : 'text-slate-800'">
+                            <span>{{ category }}</span>
+                            <span v-if="isRequired(category) && !currentSelection[category]" class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Requis</span>
+                        </h3>
                         <div class="flex gap-3 overflow-x-auto pb-2">
                             <div v-for="item in items" :key="item.id" 
                                 @click="selectForConfig(category, item)"
-                                :class="currentSelection[category]?.id === item.id ? 'ring-2 ring-slate-900 border-transparent' : 'border-slate-200 hover:border-slate-400'"
-                                class="flex-shrink-0 w-24 rounded-lg border cursor-pointer overflow-hidden transition-all bg-white">
-                                <img :src="item.image" class="w-full h-20 object-cover">
-                                <p class="text-[10px] text-center p-1 truncate font-medium text-slate-700">{{ item.name }}</p>
+                                :class="currentSelection[category]?.id === item.id ? 'ring-2 ring-slate-900 border-transparent shadow-md' : 'border-slate-200 hover:border-slate-400 opacity-80 hover:opacity-100'"
+                                class="flex-shrink-0 w-28 rounded-lg border cursor-pointer overflow-hidden transition-all bg-white group">
+                                <div class="relative">
+                                    <img :src="item.image" class="w-full h-24 object-cover">
+                                    <div v-if="currentSelection[category]?.id === item.id" class="absolute top-1 right-1 bg-slate-900 text-white rounded-full p-0.5">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <p class="text-[11px] text-center p-1.5 truncate font-medium text-slate-700 group-hover:text-slate-900">{{ item.name }}</p>
                             </div>
                         </div>
+                    </div>
+                    <div v-if="Object.keys(filteredCategoriesForConfig).length === 0" class="text-sm text-slate-500 py-4">
+                        Aucun meuble disponible pour les catégories requises de ce template.
                     </div>
                 </div>
 
                 <!-- Preview -->
                 <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 h-fit sticky top-6">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-4">Aperçu de la sélection</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-slate-800">Aperçu de la sélection</h3>
+                        <button @click="currentSelection = {}" v-if="Object.keys(currentSelection).length > 0" class="text-xs text-red-600 hover:underline">Vider</button>
+                    </div>
+                    
                     <div v-if="Object.keys(currentSelection).length === 0" class="text-sm text-slate-500 text-center py-10">
                         Aucun meuble sélectionné. Cliquez sur les éléments à gauche.
                     </div>
-                    <div class="space-y-4">
-                        <div v-for="(item, cat) in currentSelection" :key="cat" class="flex items-center gap-4 bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
-                            <img :src="item.image" class="w-16 h-16 rounded object-cover border border-slate-100">
-                            <div>
-                                <p class="text-xs text-slate-500 font-medium">{{ cat }}</p>
+                    <div class="space-y-3 mb-6">
+                        <div v-for="(item, cat) in currentSelection" :key="cat" class="flex items-center gap-4 bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm relative group">
+                            <img :src="item.image" class="w-14 h-14 rounded object-cover border border-slate-100">
+                            <div class="flex-1">
+                                <p class="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{{ cat }}</p>
                                 <p class="text-sm text-slate-900 font-semibold">{{ item.name }}</p>
                             </div>
+                            <button @click="removeSelection(cat)" class="text-slate-400 hover:text-red-600 p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
+
+                    <button @click="saveConfig" 
+                            :disabled="!canSaveConfig" 
+                            :class="canSaveConfig ? 'bg-slate-900 hover:bg-slate-800' : 'bg-slate-300 cursor-not-allowed'"
+                            class="text-white px-6 py-3 rounded-md text-sm font-semibold transition-colors w-full flex justify-center items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Sauvegarder la Configuration
+                    </button>
+                    <p v-if="!canSaveConfig && selectedRoomTemplateObj" class="text-xs text-amber-600 text-center mt-2 font-medium">
+                        Remplissez toutes les catégories requises par le template.
+                    </p>
                 </div>
             </div>
         </div>
@@ -151,15 +274,19 @@
                 </h3>
                 
                 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    <div v-for="config in profileGroup" :key="config.id" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative group">
-                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <h4 class="font-semibold text-slate-900">{{ config.name }}</h4>
+                    <div v-for="config in profileGroup" :key="config.id" class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm relative group flex flex-col h-full">
+                        <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-slate-900">{{ config.name }}</h4>
+                                <span v-if="config.template" class="text-[10px] bg-slate-200 text-slate-600 px-1.5 py-0.5 rounded mt-1 inline-block">{{ config.template }}</span>
+                            </div>
                             <button @click="deleteConfig(config.id)" class="text-slate-400 hover:text-red-600 text-sm">Supprimer</button>
                         </div>
-                        <div class="p-4 grid grid-cols-3 gap-2">
+                        <div class="p-4 grid grid-cols-3 gap-3 flex-1 content-start">
                             <div v-for="(item, cat) in config.items" :key="cat" class="text-center">
-                                <img :src="item.image" :title="item.name" class="w-full h-16 object-cover rounded border border-slate-100 mb-1">
-                                <p class="text-[10px] text-slate-500 truncate">{{ cat }}</p>
+                                <img :src="item.image" :title="item.name" class="w-full h-16 object-cover rounded border border-slate-200 mb-1.5 shadow-sm">
+                                <p class="text-[9px] text-slate-500 uppercase tracking-wider truncate px-1">{{ cat }}</p>
+                                <p class="text-[11px] font-medium text-slate-800 truncate px-1">{{ item.name }}</p>
                             </div>
                         </div>
                     </div>
@@ -174,23 +301,109 @@
         createApp({
             data() {
                 return {
-                    categories: JSON.parse(localStorage.getItem('mb_categories')) || ['Assises', 'Tables', 'Rangements'],
-                    newCategory: '',
+                    activeTab: 'manage_categories', // Defaulting to the new tab for visibility
+                    
+                    // Base Data
+                    categories: JSON.parse(localStorage.getItem('mb_categories')) || ['Assises', 'Tables', 'Rangements', 'Luminaires', 'Lits'],
                     furnitures: JSON.parse(localStorage.getItem('mb_furnitures')) || [],
-                    newFurniture: { name: '', category: '', image: null },
                     configs: JSON.parse(localStorage.getItem('mb_configs')) || [],
+                    roomTemplates: JSON.parse(localStorage.getItem('mb_templates')) || [
+                        { name: "Salon Basique", requiredCategories: ["Assises", "Tables"] },
+                        { name: "Chambre à Coucher", requiredCategories: ["Lits", "Rangements", "Luminaires"] }
+                    ],
+
+                    // Manage Categories State
+                    newCategory: '',
+                    editingCategory: null,
+                    editCategoryName: '',
+                    newRoomTemplate: '',
+
+                    // Catalog State
+                    newFurniture: { name: '', category: '', image: null },
+
+                    // Config State
                     newConfigName: '',
                     newConfigProfile: 'Moderne',
+                    selectedRoomTemplate: '',
                     currentSelection: {}, 
-                    activeTab: 'catalog'
                 }
             },
             watch: {
                 categories: { handler(val) { localStorage.setItem('mb_categories', JSON.stringify(val)) }, deep: true },
                 furnitures: { handler(val) { localStorage.setItem('mb_furnitures', JSON.stringify(val)) }, deep: true },
-                configs: { handler(val) { localStorage.setItem('mb_configs', JSON.stringify(val)) }, deep: true }
+                configs: { handler(val) { localStorage.setItem('mb_configs', JSON.stringify(val)) }, deep: true },
+                roomTemplates: { handler(val) { localStorage.setItem('mb_templates', JSON.stringify(val)) }, deep: true }
+            },
+            computed: {
+                groupedFurnitures() {
+                    const grouped = {};
+                    this.categories.forEach(c => grouped[c] = []);
+                    this.furnitures.forEach(f => {
+                        if (this.categories.includes(f.category)) {
+                            if (grouped[f.category]) grouped[f.category].push(f);
+                            else grouped[f.category] = [f];
+                        }
+                    });
+                    return grouped;
+                },
+                groupedConfigs() {
+                    const grouped = {};
+                    this.configs.forEach(c => {
+                        if (!grouped[c.profile]) grouped[c.profile] = [];
+                        grouped[c.profile].push(c);
+                    });
+                    return grouped;
+                },
+                selectedRoomTemplateObj() {
+                    if (!this.selectedRoomTemplate) return null;
+                    return this.roomTemplates.find(r => r.name === this.selectedRoomTemplate);
+                },
+                filteredCategoriesForConfig() {
+                    const grouped = this.groupedFurnitures;
+                    // If a template is selected, we ONLY show the categories required by that template 
+                    // (You could also choose to show all, but highlight the required ones. Here we filter for a cleaner UX)
+                    if (this.selectedRoomTemplateObj) {
+                        const filtered = {};
+                        this.selectedRoomTemplateObj.requiredCategories.forEach(cat => {
+                            if(grouped[cat]) {
+                                filtered[cat] = grouped[cat];
+                            } else {
+                                filtered[cat] = []; // Empty category just in case
+                            }
+                        });
+                        return filtered;
+                    }
+                    return grouped; // No template = show all
+                },
+                templateProgress() {
+                    if (!this.selectedRoomTemplateObj) return { count: 0, total: 0, percentage: 0 };
+                    const required = this.selectedRoomTemplateObj.requiredCategories;
+                    const total = required.length;
+                    if(total === 0) return { count: 0, total: 0, percentage: 100 };
+                    
+                    let count = 0;
+                    required.forEach(cat => {
+                        if (this.currentSelection[cat]) count++;
+                    });
+                    
+                    return {
+                        count,
+                        total,
+                        percentage: Math.round((count / total) * 100)
+                    };
+                },
+                canSaveConfig() {
+                    if (!this.newConfigName || Object.keys(this.currentSelection).length === 0) return false;
+                    
+                    // If a template is selected, enforce required categories
+                    if (this.selectedRoomTemplateObj) {
+                        return this.templateProgress.count === this.templateProgress.total;
+                    }
+                    return true;
+                }
             },
             methods: {
+                // --- CATEGORY & TEMPLATE MANAGEMENT ---
                 addCategory() {
                     const cat = this.newCategory.trim();
                     if (cat && !this.categories.includes(cat)) {
@@ -198,6 +411,64 @@
                         this.newCategory = '';
                     }
                 },
+                deleteCategory(catName) {
+                    if(confirm(`Supprimer la catégorie "${catName}" ? Les meubles associés perdront leur catégorie.`)) {
+                        this.categories = this.categories.filter(c => c !== catName);
+                        // Clean up templates that used this category
+                        this.roomTemplates.forEach(t => {
+                            t.requiredCategories = t.requiredCategories.filter(c => c !== catName);
+                        });
+                        // Clean up current selection if active
+                        if(this.currentSelection[catName]) delete this.currentSelection[catName];
+                    }
+                },
+                startCategoryEdit(catName) {
+                    this.editingCategory = catName;
+                    this.editCategoryName = catName;
+                },
+                saveCategoryEdit(oldName) {
+                    const newName = this.editCategoryName.trim();
+                    if(newName && newName !== oldName && !this.categories.includes(newName)) {
+                        // Update categories array
+                        const index = this.categories.indexOf(oldName);
+                        if (index !== -1) this.categories[index] = newName;
+                        
+                        // Cascade update to furnitures
+                        this.furnitures.forEach(f => {
+                            if (f.category === oldName) f.category = newName;
+                        });
+
+                        // Cascade update to templates
+                        this.roomTemplates.forEach(t => {
+                            const catIndex = t.requiredCategories.indexOf(oldName);
+                            if (catIndex !== -1) t.requiredCategories[catIndex] = newName;
+                        });
+                        
+                        // Note: We don't cascade to saved configs to preserve history, 
+                        // but you could if needed.
+                    }
+                    this.editingCategory = null;
+                },
+                addRoomTemplate() {
+                    const name = this.newRoomTemplate.trim();
+                    if (name && !this.roomTemplates.find(r => r.name === name)) {
+                        this.roomTemplates.push({ name: name, requiredCategories: [] });
+                        this.newRoomTemplate = '';
+                    }
+                },
+                deleteRoomTemplate(name) {
+                    this.roomTemplates = this.roomTemplates.filter(r => r.name !== name);
+                    if(this.selectedRoomTemplate === name) {
+                        this.selectedRoomTemplate = '';
+                        this.applyRoomTemplate();
+                    }
+                },
+                saveRoomTemplates() {
+                    // Just to trigger reactivity if needed, usually handled by v-model
+                    this.roomTemplates = [...this.roomTemplates]; 
+                },
+
+                // --- CATALOG ---
                 handleImage(event) {
                     const file = event.target.files[0];
                     if (!file) return;
@@ -246,36 +517,61 @@
                         }
                     }
                 },
+
+                // --- CONFIGURATION ---
+                applyRoomTemplate() {
+                    // When changing template, clear selection of categories not in the new template
+                    if (this.selectedRoomTemplateObj) {
+                        const required = this.selectedRoomTemplateObj.requiredCategories;
+                        for (const cat in this.currentSelection) {
+                            if (!required.includes(cat)) {
+                                delete this.currentSelection[cat];
+                            }
+                        }
+                    }
+                },
+                isRequired(category) {
+                    if(!this.selectedRoomTemplateObj) return false;
+                    return this.selectedRoomTemplateObj.requiredCategories.includes(category);
+                },
                 selectForConfig(category, furniture) {
                     this.currentSelection[category] = furniture;
                 },
+                removeSelection(category) {
+                    delete this.currentSelection[category];
+                },
                 saveConfig() {
-                    if (this.newConfigName && Object.keys(this.currentSelection).length > 0) {
+                    if (this.canSaveConfig) {
                         this.configs.push({
                             id: Date.now(),
                             name: this.newConfigName,
                             profile: this.newConfigProfile,
+                            template: this.selectedRoomTemplate || null,
                             items: JSON.parse(JSON.stringify(this.currentSelection))
                         });
                         this.newConfigName = '';
                         this.currentSelection = {};
+                        // Keep template selection active for rapid creation
                         this.activeTab = 'saved';
                     }
                 },
                 deleteConfig(id) {
                     this.configs = this.configs.filter(c => c.id !== id);
                 },
+
+                // --- DATA EXPORT/IMPORT ---
                 exportData() {
                     const data = {
                         categories: this.categories,
                         furnitures: this.furnitures,
-                        configs: this.configs
+                        configs: this.configs,
+                        roomTemplates: this.roomTemplates
                     };
                     const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'meubles_config_backup.json';
+                    a.download = 'meubles_advanced_backup.json';
                     a.click();
                     URL.revokeObjectURL(url);
                 },
@@ -290,6 +586,7 @@
                                 this.categories = data.categories;
                                 this.furnitures = data.furnitures;
                                 this.configs = data.configs;
+                                if(data.roomTemplates) this.roomTemplates = data.roomTemplates;
                                 alert("Données importées avec succès !");
                             } else {
                                 alert("Fichier JSON invalide. Il manque des données essentielles.");
@@ -300,25 +597,6 @@
                     };
                     reader.readAsText(file);
                     event.target.value = ''; 
-                }
-            },
-            computed: {
-                groupedFurnitures() {
-                    const grouped = {};
-                    this.categories.forEach(c => grouped[c] = []);
-                    this.furnitures.forEach(f => {
-                        if (grouped[f.category]) grouped[f.category].push(f);
-                        else grouped[f.category] = [f];
-                    });
-                    return grouped;
-                },
-                groupedConfigs() {
-                    const grouped = {};
-                    this.configs.forEach(c => {
-                        if (!grouped[c.profile]) grouped[c.profile] = [];
-                        grouped[c.profile].push(c);
-                    });
-                    return grouped;
                 }
             }
         }).mount('#app')
